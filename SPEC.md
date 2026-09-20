@@ -1,100 +1,114 @@
-# Jev Trader — Product Spec
+# Jev Trader 产品规格
 
-## One line
-A live public dashboard showing an AI make a real trade decision on Monad every 300 ms block.
+## 一句话
 
-## What it is
-A single-page web app. A TypeSafe "Jev" model (a System One model: no text output, returns typed decisions with probabilities in ~100 ms) watches the MON-USDC order book on Kuru, Monad's on-chain exchange. Every block (300 ms) it answers one question: buy or sell. Every block is a real order from a real wallet, confirmed in the same block. The page shows this happening live.
+一个公开的实时看板，展示 AI 在 Monad 上每 300 毫秒一个区块做一次真实的交易决策。
 
-## Who it is for
-1. Crypto Twitter, via a 20-second screen-recorded clip and a link. They have three seconds to get it.
-2. People who click through and watch for five minutes. They should be able to verify everything: wallet, transactions, cost.
+## 它是什么
 
-## The message
-Primary: "This AI makes a real trade decision every 300 ms on Monad."
-Secondary punchline: "The AI costs less than the gas." (Jev inference for an hour ≈ $0.20; gas for the same hour ≈ $2–5.)
-Nothing on screen may compete with these two lines.
+一个单页 Web 应用。一个 TypeSafe "Jev" 模型（System One 类型的模型：不输出文本，在约 100 毫秒内返回带概率的类型化决策）盯住 Monad 链上交易所 Kuru 的 MON-USDC 订单簿。每个区块（300 毫秒）它回答一个问题：买还是卖。每个区块都是一笔来自真实钱包的真实订单，并在同一个区块内确认。页面把这一切实时呈现出来。
 
-## Design principles
-- One screen. No navigation, no settings, no login.
-- Motion is the content. Something visibly changes every 300 ms, and the viewer should feel the rhythm of the chain.
-- Everything shown is real and verifiable. Wallet address, tx hashes, block heights link to the explorer.
-- Legible in a compressed 1080p clip and at phone width. Big numbers, high contrast, no thin type.
-- Restraint. Dark trading-desk aesthetic. Green = buy, red = sell, neutral grey = hold. One accent color (Monad purple is acceptable). No gradients, no decorative charts.
-- Honest. Every block trades, so spread and gas bleed are visible. Losses are shown as plainly as gains. A "stand-in model" badge appears when real Jev is not connected.
+## 面向谁
 
-## Layout (desktop 16:9 primary; mobile stacks vertically in the same order)
+1. 加密推特上的用户，通过一段 20 秒录屏加一个链接触达。他们只有三秒钟看懂。
+2. 会点进来、看五分钟的人。他们应该能验证一切：钱包、交易、成本。
 
-1. Header strip
-   - Title (working name: Jev Trader), live indicator dot, "block 105,416,201" ticking every 300 ms.
-   - Wallet address, truncated, with copy and explorer link.
-   - Model badge: "jev-latest" (or "stand-in" in amber).
-   - Uptime.
+## 传达的信息
 
-2. Hero: price chart
-   - MON/USDC mid price, rolling window (default last 5 minutes ≈ 1,000 blocks; toggle 1m / 5m / 15m).
-   - A marker on every fill: green up-triangle for buy, red down-triangle for sell. Nearly every block has one.
-   - Current price in large type at the right edge of the line. Position size and side shown as a small pill (e.g. "long 12 MON").
+主信息：「这个 AI 在 Monad 上每 300 毫秒做一次真实的交易决策。」
 
-3. Decision panel (the flicker; this is the signature element)
-   - Updates every block. Shows the decision for the current block.
-   - Two-way probability bar: buy vs sell with percentages. The chosen side is highlighted. (This is also the "will price go up" number: buy probability = up probability.)
-   - Decision latency in ms for this block (e.g. "94 ms").
-   - A tiny per-block tick strip along the bottom: the last 60 blocks as small squares, green/red for buy/sell, amber for "late" (model missed the block, no trade). Scrolls left as blocks arrive.
+次要金句：「AI 比 gas 还便宜。」（Jev 推理一小时约 0.20 美元；同一小时的 gas 约 2 到 5 美元。）
 
-4. Counters row (six tiles, tabular numerals, all live)
-   - Blocks seen
-   - Decisions made
-   - Trades executed
-   - Jev spend (USD, four decimals)
-   - Gas spend (MON and USD)
-   - P&L (MON and %). Red or green. No smoothing, no hiding.
-   Jev spend and gas spend sit adjacent so the "AI costs less than gas" comparison is visual without a caption.
+屏幕上任何东西都不能抢这两句话的注意力。
 
-5. Trade tape
-   - Last 12 fills: block, side, size, price, decision latency, tx hash (link).
-   - New rows slide in from the top.
+## 设计原则
 
-6. Footer
-   - One-line disclaimer: experimental demo, tiny bankroll, not financial advice, the model is not trying to be profitable.
-   - Credits and links: TypeSafe (Jev), Monad, Kuru, source repo. Credit, not co-branding.
+- 一屏。没有导航，没有设置，没有登录。
+- 动效就是内容。每 300 毫秒都有看得见的变化，观看者应该能感受到这条链的节奏。
+- 展示的一切都真实且可验证。钱包地址、交易哈希、区块高度都能链到区块浏览器。
+- 压缩成 1080p 短片后、以及手机宽度下都要可读。大数字、高对比、不用细字重。
+- 克制。深色交易台美学。绿色等于买，红色等于卖，中性灰等于 hold。只用一个强调色（Monad 紫可以接受）。不用渐变，不做装饰性图表。
+- 诚实。每个区块都在交易，所以点差和 gas 的失血是看得见的。亏损和盈利一样平铺直叙。真实 Jev 未接通时显示「替身模型」徽标。
 
-## States
-- Live: everything above.
-- Model late: block ticks amber, decision panel shows "late — held", counter for late blocks increments.
-- RPC disconnected: header dot turns red, chart freezes with a "reconnecting" overlay, counters stop.
-- Out of funds / paused: banner across the hero, decisions continue in dry-run (shown greyed) but no fills.
-- Replay: plays back a recorded session at real speed, clearly labelled "replay", for recording clips or when markets are dead.
-- Stand-in model: amber badge in header, otherwise identical.
+## 布局（桌面 16:9 为主；移动端按同样顺序纵向堆叠）
 
-## Interactions (deliberately few)
-- Hover a chart marker: tooltip with block, side, size, price, probabilities at that block.
-- Click tx hash or block: opens explorer.
-- Click wallet: copies address.
-- Chart window toggle.
-- Nothing else. No trading controls for viewers.
+1. 顶栏
+   - 标题（暂定名 Jev Trader）、实时指示点、「block 105,416,201」每 300 毫秒跳动。
+   - 钱包地址，截断显示，带复制按钮和区块浏览器链接。
+   - 模型徽标：「jev-latest」（或琥珀色的「替身」）。
+   - 运行时长。
 
-## Live data shape (delivered over a server stream, one event per block)
-- block, timestamp
-- mid, bestBid, bestAsk, spread
-- decision: action (buy | sell; hold only when late), probabilities {buy, sell, hold}, upIn10 (= buy probability), latencyMs, late (bool)
-- fill (optional): side, size, price, txHash, gasMon
-- position: side, size, entryPrice, unrealizedMon
-- totals: blocks, decisions, trades, jevUsd, gasMon, gasUsd, pnlMon, pnlPct, lateBlocks
+2. 主视觉：价格图
+   - MON/USDC 中间价，滚动窗口（默认最近 5 分钟，约 1000 个区块；可切换 1 分钟 / 5 分钟 / 15 分钟）。
+   - 每一笔成交都打一个标记：买入是绿色上三角，卖出是红色下三角。几乎每个区块都有一笔。
+   - 当前价格以大字号显示在价格线的右端。持仓规模和方向用一个小的胶囊标签展示（例如「long 12 MON」）。
 
-## Non-goals
-- No comparison with other models. One model, one market.
-- No memecoins, no launchpad feed.
-- No user wallets, no user trading, no accounts.
-- No historical analytics, no backtests, no strategy explanation.
-- No chat, no text output from the model anywhere.
+3. 决策面板（闪烁区，这是标志性元素）
+   - 每个区块更新一次，显示当前区块的决策。
+   - 双向概率条：买对卖，带百分比。被选中的一侧高亮。（这同时也是「价格会不会涨」的数字：买入概率等于上涨概率。）
+   - 本区块的决策延迟毫秒数（例如「94 ms」）。
+   - 底部一条极小的逐块刻度带：最近 60 个区块用小方块表示，绿或红表示买或卖，琥珀色表示迟到（模型错过该区块，没有交易）。随区块到来向左滚动。
 
-## Technical constraints the design must respect
-- 3.3 updates per second, indefinitely. Animations must be cheap: transforms and opacity only, no layout thrash.
-- Constantly changing numbers need tabular (fixed-width) numerals so tiles do not jitter.
-- Must stay legible with a fill on nearly every block: markers must not smear into a solid band at 3 per second (thin markers, or aggregate when zoomed out).
-- Screen-recordable: no elements that only make sense with hover.
-- Works at 390 px wide.
+4. 计数器行（六个方块，等宽数字，全部实时）
+   - 看到的区块数
+   - 做出的决策数
+   - 执行的交易数
+   - Jev 花费（美元，四位小数）
+   - Gas 花费（MON 和美元）
+   - 盈亏（MON 和百分比）。红色或绿色。不平滑，不隐藏。
 
-## Success criterion
-A viewer with no context, watching a 20-second clip on a phone with the sound off, understands within three seconds that an AI is trading on a blockchain every fraction of a second, and can see what it costs. Then they share it.
+   Jev 花费和 gas 花费相邻摆放，让「AI 比 gas 便宜」这个对比不用配字就能看出来。
+
+5. 成交流水
+   - 最近 12 笔成交：区块、方向、数量、价格、决策延迟、交易哈希（链接）。
+   - 新行从顶部滑入。
+
+6. 页脚
+   - 一行免责声明：实验性演示，极小资金，不构成投资建议，这个模型并不以盈利为目标。
+   - 致谢与链接：TypeSafe（Jev）、Monad、Kuru、源码仓库。是致谢，不是联名。
+
+## 状态
+
+- 实时：以上全部。
+- 模型迟到：区块跳动转琥珀色，决策面板提示迟到且本块未挂单，迟到区块计数递增。
+- RPC 断开：顶栏指示点变红，图表冻结并覆盖一层「重连中」提示，计数器停止。
+- 资金耗尽 / 暂停：主视觉上方横贯一条横幅，决策在 dry run 中继续（以灰色显示）但没有成交。
+- 回放：以真实速度回放一段录制好的会话，明确标注「回放」，用于录制短片或行情死寂时。
+- 替身模型：顶栏琥珀色徽标，其余完全相同。
+
+## 交互（刻意做得很少）
+
+- 悬停图表标记：提示框显示该区块的区块号、方向、数量、价格、概率。
+- 点击交易哈希或区块号：打开区块浏览器。
+- 点击钱包：复制地址。
+- 图表时间窗切换。
+- 没有别的了。观看者没有任何交易控制。
+
+## 实时数据形状（通过服务端流下发，每区块一个事件）
+
+- block、timestamp
+- mid、bestBid、bestAsk、spread
+- decision：action（buy 或 sell，只有迟到时才是 hold）、probabilities {buy, sell, hold}、upIn10（等于买入概率）、latencyMs、late（布尔）
+- fill（可选）：side、size、price、txHash、gasMon
+- position：side、size、entryPrice、unrealizedMon
+- totals：blocks、decisions、trades、jevUsd、gasMon、gasUsd、pnlMon、pnlPct、lateBlocks
+
+## 非目标
+
+- 不做与其他模型的对比。一个模型，一个市场。
+- 不做 meme 币，不做发币台信息流。
+- 没有用户钱包，没有用户交易，没有账号。
+- 不做历史分析，不做回测，不解释策略。
+- 不做聊天，模型在任何地方都不输出文本。
+
+## 设计必须遵守的技术约束
+
+- 每秒 3.3 次更新，长期持续。动画必须廉价：只用 transform 和 opacity，不做触发重排的操作。
+- 持续变化的数字必须用等宽字体数字，方块才不会抖动。
+- 在几乎每个区块都有成交的情况下仍要可读：标记不能以每秒 3 个的密度糊成一条实带（用细标记，或缩小时做聚合）。
+- 可录屏：不能有只有悬停时才有意义的元素。
+- 在 390 像素宽度下可用。
+
+## 成功标准
+
+一个毫无背景的观看者，在手机上开着静音看一段 20 秒短片，能在三秒内明白有一个 AI 每零点几秒就在区块链上交易一次，并且能看出它的成本。然后他会转发出去。
