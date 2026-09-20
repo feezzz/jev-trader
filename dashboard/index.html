@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JEV//TRADER</title>
+<style>
+:root{
+  --bg:#04070b;
+  --panel:#080d14;
+  --panel2:#0b121b;
+  --line:#16222f;
+  --line2:#23384d;
+  --ink:#e2edf8;
+  --ink2:#8ea6bf;
+  --dim:#55697f;
+  --buy:#23e08b;
+  --buy-dim:#0d5c3b;
+  --sell:#ff5f5f;
+  --sell-dim:#642222;
+  --late:#ffb224;
+  --accent:#35e0ff;
+  --accent-dim:#0e3d4a;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--mono);font-size:12px;line-height:1.45;
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  overflow:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(53,224,255,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(53,224,255,.04) 1px,transparent 1px);
+  background-size:34px 34px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 35%,#000 25%,transparent 82%);
+  mask-image:radial-gradient(ellipse at 50% 35%,#000 25%,transparent 82%);
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:80;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px);
+}
+.app{
+  position:relative;z-index:1;
+  height:100dvh;padding:10px;gap:10px;
+  display:flex;flex-direction:column;
+}
+.panel{position:relative;background:var(--panel);border:1px solid var(--line)}
+.panel::before,.panel::after{content:"";position:absolute;width:9px;height:9px;pointer-events:none}
+.panel::before{top:-1px;left:-1px;border-top:1px solid var(--accent);border-left:1px solid var(--accent);opacity:.65}
+.panel::after{bottom:-1px;right:-1px;border-bottom:1px solid var(--accent);border-right:1px solid var(--accent);opacity:.65}
+
+/* ---------- header ---------- */
+.topbar{display:flex;align-items:center;gap:18px;padding:9px 14px;flex:none;overflow:hidden}
+.brand{font-size:13px;letter-spacing:3px;color:var(--ink);white-space:nowrap}
+.brand i{font-style:normal;color:var(--accent)}
+.caret{display:inline-block;width:7px;height:13px;background:var(--accent);vertical-align:-2px;margin-right:8px}
+.hstat{display:flex;flex-direction:column;gap:1px;white-space:nowrap}
+.hstat b{font-size:16px;font-weight:500;letter-spacing:.5px}
+.hstat span{font-size:10px;color:var(--dim);letter-spacing:1.4px}
+.grow{flex:1}
+.chip{
+  border:1px solid var(--line2);padding:3px 8px;font-size:10px;
+  letter-spacing:1.2px;color:var(--ink2);white-space:nowrap;
+}
+.chip.b-jev{color:#c8bcff;border-color:#453a86;background:#170f33}
+.chip.b-mock{color:var(--late);border-color:#5c4210;background:#221703}
+.chip.b-demo{color:#ffd479;border-color:#6b5216;background:#241a04}
+.chip.b-live{color:var(--buy);border-color:#14513a}
+.chip.b-bad{color:var(--sell);border-color:#5c2222}
+button.chip{background:none;cursor:pointer;font-family:inherit}
+button.chip:hover{border-color:var(--accent);color:var(--ink)}
+
+/* ---------- main ---------- */
+.main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:10px}
+.chart{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.cwrap{position:relative;flex:1;min-height:0}
+#chart{display:block;width:100%;height:100%}
+.chud{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:12px 14px}
+.chud .row{display:flex;gap:14px;align-items:baseline}
+.chud .row.end{justify-content:flex-end}
+.bigprice{font-size:30px;letter-spacing:.5px;line-height:1}
+.tag{font-size:10px;color:var(--dim);letter-spacing:1.4px}
+.tag b{color:var(--ink2);font-weight:400}
+.stripwrap{flex:none;border-top:1px solid var(--line);padding:8px 14px 10px;display:flex;align-items:center;gap:12px}
+.striplabel{font-size:10px;color:var(--dim);letter-spacing:1.4px;white-space:nowrap}
+.strip{display:flex;gap:2px;flex:1;overflow:hidden;justify-content:flex-end}
+.cell{flex:0 0 6px;height:15px;background:#1a2432}
+.cell.buy{background:var(--buy)}
+.cell.sell{background:var(--sell)}
+.cell.late{background:var(--late)}
+.cell.hold{background:#2a3646}
+
+/* ---------- side ---------- */
+.side{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto;overflow-x:hidden}
+.side::-webkit-scrollbar{width:6px}
+.side::-webkit-scrollbar-thumb{background:var(--line2)}
+.sec{padding:10px 14px 13px}
+.sec + .sec{border-top:1px solid var(--line)}
+.label{font-size:10px;color:var(--dim);letter-spacing:1.6px;margin-bottom:8px}
+.word{font-size:32px;letter-spacing:2px;line-height:1}
+.word.buy{color:var(--buy)}
+.word.sell{color:var(--sell)}
+.word.late{color:var(--late)}
+.wsub{display:flex;gap:14px;margin-top:7px;font-size:11px;color:var(--ink2)}
+.bar{margin-top:10px}
+.bar .bt{display:flex;justify-content:space-between;font-size:10px;letter-spacing:1.2px;color:var(--dim);margin-bottom:3px}
+.bar .track{height:6px;background:#111a24;overflow:hidden}
+.bar .fill{height:100%;width:0;transition:width .18s linear}
+.bar.buy .fill{background:var(--buy)}
+.bar.sell .fill{background:var(--sell)}
+.bar.dim .fill{background:#2b3a4c}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
+.kv div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted var(--line);padding-bottom:3px}
+.kv i{font-style:normal;color:var(--dim);font-size:10px;letter-spacing:1px}
+.kv b{font-weight:400;color:var(--ink)}
+.pos{display:flex;align-items:baseline;gap:10px}
+.pos .side-tag{font-size:11px;letter-spacing:1.6px;padding:2px 6px;border:1px solid var(--line2)}
+.pos .side-tag.long{color:var(--buy);border-color:#14513a}
+.pos .side-tag.short{color:var(--sell);border-color:#5c2222}
+.pos .side-tag.flat{color:var(--dim)}
+.pos .sz{font-size:20px}
+.cmp{margin-top:10px;font-size:10px;color:var(--dim);letter-spacing:1.2px}
+.cmp .line{display:flex;align-items:center;gap:8px;margin-top:5px}
+.cmp .line span:first-child{width:42px}
+.cmp .line .track{flex:1;height:5px;background:#111a24}
+.cmp .line .fill{height:100%}
+.cmp .line em{font-style:normal;width:74px;text-align:right;color:var(--ink2)}
+
+/* ---------- tape ---------- */
+.tape{flex:none;height:176px;display:flex;flex-direction:column;overflow:hidden}
+.tapehead{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line);flex:none}
+.tapehead input{
+  background:#060b11;border:1px solid var(--line);color:var(--ink2);
+  font-family:inherit;font-size:10px;padding:3px 7px;width:250px;outline:none;
+}
+.tapehead input:focus{border-color:var(--accent);color:var(--ink)}
+.tbody{flex:1;overflow-y:auto;padding:2px 0}
+.tbody::-webkit-scrollbar{width:6px}
+.tbody::-webkit-scrollbar-thumb{background:var(--line2)}
+.trow{display:grid;grid-template-columns:96px 52px 1fr 1fr 60px 1fr;gap:10px;padding:3px 14px;font-size:11px;color:var(--ink2);white-space:nowrap}
+.trow.head{color:var(--dim);font-size:10px;letter-spacing:1.2px;position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding-top:6px;padding-bottom:6px}
+.trow.buy .s{color:var(--buy)}
+.trow.sell .s{color:var(--sell)}
+.trow.late .s{color:var(--late)}
+.trow a{color:var(--accent);text-decoration:none}
+.trow a:hover{text-decoration:underline}
+.empty{padding:18px 14px;color:var(--dim);font-size:11px}
+.mono-s{color:var(--dim)}
+
+@media (max-width:960px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100dvh}
+  .topbar{flex-wrap:wrap;gap:10px 14px}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .cwrap{height:260px}
+  .tape{height:auto}
+  .trow{grid-template-columns:80px 44px 1fr;font-size:10px}
+  .trow .hide-s{display:none}
+  .tapehead input{width:150px}
+}
+@media (prefers-reduced-motion:reduce){
+  .bar .fill{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar panel">
+    <div class="brand"><span class="caret"></span>JEV<i>//</i>TRADER</div>
+    <div class="hstat"><b id="hBlock">-</b><span>BLOCK</span></div>
+    <div class="hstat"><b id="hMid">-</b><span>MON/USDC</span></div>
+    <div class="hstat"><b id="hSpread">-</b><span>SPREAD BPS</span></div>
+    <div class="grow"></div>
+    <div class="chip" id="cModel">-</div>
+    <button class="chip" id="cWallet" title="点击复制地址">-</button>
+    <div class="chip" id="cUptime">00:00:00</div>
+    <div class="chip" id="cStatus">CONNECTING</div>
+    <div class="chip b-demo" id="cDemo" style="display:none">DEMO</div>
+  </header>
+
+  <main class="main">
+    <section class="chart panel">
+      <div class="cwrap">
+        <canvas id="chart"></canvas>
+        <div class="chud">
+          <div class="row">
+            <span class="tag">KURU <b>MON/USDC</b></span>
+            <span class="tag">SPOT <b id="oMid">-</b></span>
+            <span class="tag">BID <b id="oBid">-</b></span>
+            <span class="tag">ASK <b id="oAsk">-</b></span>
+          </div>
+          <div class="row end">
+            <span class="tag">POS <b id="oPos">flat</b></span>
+            <span class="tag">UPL <b id="oUpl">0.0000</b></span>
+            <span class="tag">P&amp;L <b id="oPnl">+0.0000</b></span>
+          </div>
+        </div>
+      </div>
+      <div class="stripwrap">
+        <span class="striplabel">LAST BLOCKS</span>
+        <div class="strip" id="strip"></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="sec panel">
+        <div class="label">WHICH SIDE THIS BLOCK</div>
+        <div class="word" id="dWord">-</div>
+        <div class="wsub">
+          <span>CONF <b id="dConf">-</b></span>
+          <span>LAT <b id="dLat">-</b></span>
+          <span>AVG <b id="dAvg">-</b></span>
+        </div>
+        <div class="bar buy dim" id="barBuy">
+          <div class="bt"><span>BUY</span><span id="pBuy">-</span></div>
+          <div class="track"><div class="fill" id="fBuy"></div></div>
+        </div>
+        <div class="bar sell dim" id="barSell">
+          <div class="bt"><span>SELL</span><span id="pSell">-</span></div>
+          <div class="track"><div class="fill" id="fSell"></div></div>
+        </div>
+        <div class="cmp">
+          <div class="line"><span>QUOTE</span><span id="dQuote" style="flex:1;color:var(--ink2)">no quote</span></div>
+          <div class="line"><span>RESTING</span><span id="dRest" style="flex:1;color:var(--ink2)">-</span></div>
+        </div>
+      </section>
+
+      <section class="sec panel">
+        <div class="label">POSITION</div>
+        <div class="pos">
+          <span class="side-tag flat" id="pSide">FLAT</span>
+          <span class="sz" id="pSize">0.000</span>
+          <span style="color:var(--dim)">MON</span>
+        </div>
+        <div class="cmp">
+          <div class="line"><span>ENTRY</span><span id="pEntry" style="flex:1;color:var(--ink2)">-</span></div>
+          <div class="line"><span>UPL</span><span id="pUpl" style="flex:1;color:var(--ink2)">-</span></div>
+        </div>
+      </section>
+
+      <section class="sec panel">
+        <div class="label">COUNTERS</div>
+        <div class="kv">
+          <div><i>BLOCKS</i><b id="kBlocks">0</b></div>
+          <div><i>DECISIONS</i><b id="kDecisions">0</b></div>
+          <div><i>QUOTES</i><b id="kQuotes">0</b></div>
+          <div><i>FILLS</i><b id="kFills">0</b></div>
+          <div><i>REVERTED</i><b id="kReverted">0</b></div>
+          <div><i>LATE</i><b id="kLate">0</b></div>
+          <div><i>GAS MON</i><b id="kGasMon">0</b></div>
+          <div><i>JEV USD</i><b id="kJev">0</b></div>
+        </div>
+        <div class="cmp">
+          <div class="line"><span>AI</span><div class="track"><div class="fill" id="cJev" style="background:var(--accent)"></div></div><em id="cJevV">$0.0000</em></div>
+          <div class="line"><span>GAS</span><div class="track"><div class="fill" id="cGas" style="background:var(--late)"></div></div><em id="cGasV">$0.0000</em></div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="tape panel">
+    <div class="tapehead">
+      <span class="striplabel">TRADE TAPE</span>
+      <div class="grow"></div>
+      <input id="apiInput" spellcheck="false" placeholder="http://localhost:3000" />
+      <button class="chip" id="btnLive">RECONNECT</button>
+    </div>
+    <div class="tbody" id="tape">
+      <div class="trow head">
+        <span>BLOCK</span><span>SIDE</span><span>SIZE MON</span>
+        <span class="hide-s">PRICE</span><span class="hide-s">LAT</span><span class="hide-s">TX</span>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const qs = new URLSearchParams(location.search);
+const DEFAULT_API = location.protocol.indexOf("http") === 0 ? location.origin : "http://localhost:3000";
+const CAP = 900;
+const STRIP_MAX = 160;
+const TAPE_MAX = 40;
+/** set by the api input; empty means use DEFAULT_API */
+let apiBase = (qs.get("api") || localStorage.getItem("jev.api") || DEFAULT_API).replace(/\/+$/, "");
+$("apiInput").value = apiBase;
+
+const st = {
+  meta: null,
+  events: [],
+  latest: null,
+  conn: "connecting",
+  demo: false,
+  es: null,
+  gotSnapshot: false,
+  demoRec: null
+};
+
+/* ------------------------------------------------------------------ format */
+const fmtInt = (n) => Number.isFinite(n) ? Math.round(n).toLocaleString("en-US") : "-";
+const fmtPrice = (n) => Number.isFinite(n) ? n.toFixed(6) : "-";
+const fmtMon = (n, d) => Number.isFinite(n) ? n.toFixed(d === undefined ? 1 : d) : "-";
+function fmtUsd(n, d) {
+  if (!Number.isFinite(n)) return "-";
+  return (n < 0 ? "-$" : "$") + Math.abs(n).toFixed(d === undefined ? 4 : d);
+}
+function fmtSigned(n, d) {
+  if (!Number.isFinite(n)) return "-";
+  return (n >= 0 ? "+" : "-") + Math.abs(n).toFixed(d === undefined ? 4 : d);
+}
+function hhmmss(ms) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const p = (x) => (x < 10 ? "0" + x : "" + x);
+  return p(h) + ":" + p(m) + ":" + p(s);
+}
+function shortAddr(a) { return !a ? "DRY RUN" : a.length <= 12 ? a : a.slice(0, 6) + "..." + a.slice(-4); }
+function shortTx(h) { return !h ? "" : h.slice(0, 10) + "..."; }
+const txUrl = (h) => "https://monadvision.com/tx/" + h;
+
+/* --------------------------------------------------------------- ingestion */
+function pushBlock(ev) {
+  if (!ev || typeof ev.block !== "number") return;
+  const evs = st.events;
+  const last = evs.length ? evs[evs.length - 1] : null;
+  if (last && ev.block <= last.block) {
+    for (let i = evs.length - 1; i >= 0; i--) {
+      if (evs[i].block === ev.block) { evs[i] = ev; break; }
+    }
+    return;
+  }
+  evs.push(ev);
+  if (evs.length > CAP) evs.splice(0, evs.length - CAP);
+  st.latest = ev;
+  markDirty();
+}
+
+function patchBlock(block, key, value) {
+  const evs = st.events;
+  for (let i = evs.length - 1; i >= 0; i--) {
+    if (evs[i].block === block) {
+      const next = Object.assign({}, evs[i]);
+      next[key] = value;
+      evs[i] = next;
+      if (st.latest && st.latest.block === block) st.latest = next;
+      markDirty();
+      return;
+    }
+  }
+}
+
+function avgLatency() {
+  let sum = 0, n = 0;
+  const evs = st.events;
+  for (let i = evs.length - 1; i >= 0 && n < 200; i--) {
+    const d = evs[i].decision;
+    if (d && !d.late && Number.isFinite(d.latencyMs)) { sum += d.latencyMs; n++; }
+  }
+  return n ? Math.round(sum / n) : 0;
+}
+
+function setConn(v, text) {
+  st.conn = v;
+  const el = $("cStatus");
+  el.textContent = text;
+  el.className = "chip " + (v === "live" ? "b-live" : v === "demo" ? "b-demo" : "b-bad");
+}
+
+/* -------------------------------------------------------------- live source */
+function closeSource() {
+  if (st.es) { st.es.onerror = null; st.es.close(); st.es = null; }
+}
+
+function connectLive() {
+  closeSource();
+  stopDemo();
+  st.gotSnapshot = false;
+  setConn("connecting", "CONNECTING");
+  if (typeof EventSource === "undefined") { startDemo("NO EVENTSOURCE"); return; }
+
+  let es;
+  try { es = new EventSource(apiBase + "/events"); }
+  catch (e) { startDemo("BAD URL"); return; }
+  st.es = es;
+
+  const on = (type, fn) => es.addEventListener(type, (raw) => {
+    let data; try { data = JSON.parse(raw.data); } catch (e) { return; }
+    fn(data);
+  });
+
+  es.onopen = () => setConn("live", "LIVE");
+  es.onerror = () => { if (!st.gotSnapshot) setConn("bad", "OFFLINE"); };
+
+  on("snapshot", (d) => {
+    st.gotSnapshot = true;
+    stopDemo();
+    setConn("live", "LIVE");
+    st.meta = { model: d.model, wallet: d.wallet, dryRun: !!d.dryRun, market: d.market, startedAt: d.startedAt };
+    resetView();
+    const h = Array.isArray(d.history) ? d.history : [];
+    for (const e of h) pushBlock(e);
+    for (const e of h) if (e.fill) addTapeRow(e, e.fill);
+    markDirty();
+  });
+  on("block", (d) => pushBlock(d));
+  on("quote", (d) => { if (d && typeof d.block === "number") patchBlock(d.block, "quote", d.quote); });
+  on("fill", (d) => {
+    if (!d || typeof d.block !== "number" || !d.fill) return;
+    patchBlock(d.block, "fill", d.fill);
+    const ev = st.events.find((e) => e.block === d.block);
+    if (ev) addTapeRow(ev, d.fill);
+  });
+  on("ping", () => { if (st.conn !== "live") setConn("live", "LIVE"); });
+
+  setTimeout(() => { if (!st.gotSnapshot && st.conn !== "live") startDemo("NO FEED"); }, 3500);
+}
+
+/* -------------------------------------------------------------- demo source */
+function startDemo(reason) {
+  if (st.demo) return;
+  closeSource();
+  st.demo = true;
+  setConn("demo", "DEMO");
+  $("cDemo").style.display = "";
+  $("cDemo").textContent = "DEMO / " + reason;
+  st.meta = { model: "mock (simulated)", wallet: null, dryRun: true, market: "0x065C9d..C394", startedAt: Date.now() };
+  resetView();
+
+  let block = 105488269;
+  let mid = 0.022636;
+  let drift = 0;
+  const sim = {
+    mon: 0, cost: 0, realized: 0, gasMon: 0, jevUsd: 0, fills: 0,
+    resting: null, restingId: null
+  };
+  const totals = { blocks: 0, decisions: 0, quotes: 0, fills: 0, reverted: 0, lateBlocks: 0, jevUsd: 0, gasMon: 0, gasUsd: 0, realizedUsd: 0, pnlUsd: 0, pnlMon: 0, pnlPct: 0 };
+
+  st.demoRec = setInterval(() => {
+    block++;
+    const late = Math.random() < 0.012;
+    drift = drift * 0.94 + (Math.random() - 0.5) * 0.000045;
+    mid = Math.max(0.0005, mid + drift);
+    const spread = mid * 0.0007 * (0.6 + Math.random() * 0.8);
+    const bid = mid - spread / 2, ask = mid + spread / 2;
+
+    totals.blocks++;
+    if (late) totals.lateBlocks++;
+
+    let decision = null, quote = null, fill = null;
+
+    if (sim.resting && sim.resting.block < block) {
+      const o = sim.resting;
+      const hit = o.side === "buy" ? bid <= o.price : ask >= o.price;
+      if (hit) {
+        const size = o.size;
+        const signed = o.side === "buy" ? size : -size;
+        if (sim.mon === 0 || Math.sign(sim.mon) === Math.sign(signed)) sim.cost += signed * o.price;
+        else {
+          const closing = Math.min(Math.abs(signed), Math.abs(sim.mon)) * Math.sign(signed);
+          const entry = sim.cost / sim.mon;
+          sim.realized += -closing * (o.price - entry);
+          sim.cost += closing * entry;
+          sim.cost += (signed - closing) * o.price;
+        }
+        sim.mon += signed;
+        if (Math.abs(sim.mon) < 1e-9) { sim.mon = 0; sim.cost = 0; }
+        sim.fills++; totals.fills++;
+        fill = { side: o.side, size: size, price: o.price, txHash: null, orderId: o.id, simulated: true };
+        sim.resting = null;
+      }
+    }
+
+    if (!late) {
+      const signal = (Math.random() - 0.5) * 3 + (mid > 0.0226 ? -0.6 : 0.6);
+      const buy = 1 / (1 + Math.exp(-signal));
+      const side = buy >= 0.5 ? "buy" : "sell";
+      const price = side === "buy" ? bid + 0.000001 : ask - 0.000001;
+      const txHash = "0x" + Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
+      const gasMon = 0.0357 * (0.9 + Math.random() * 0.2);
+      quote = {
+        side: side, price: price, size: 200, txHash: txHash, gasMon: gasMon,
+        cancel: sim.restingId ? [sim.restingId] : [], status: "placed",
+        orderId: 100295800 + block % 900, capped: false
+      };
+      sim.restingId = quote.orderId;
+      sim.resting = { side: side, price: price, size: 200, block: block, id: quote.orderId };
+      totals.quotes++; totals.decisions++; totals.gasMon += gasMon; totals.jevUsd += 0.0000042;
+      decision = {
+        action: side,
+        probabilities: { buy: buy, sell: 1 - buy, hold: 0 },
+        upIn10: buy, latencyMs: Math.round(78 + Math.random() * 40), late: false
+      };
+      totals.reverted += Math.random() < 0.04 ? 1 : 0;
+    } else {
+      decision = { action: "hold", probabilities: { buy: 0, sell: 0, hold: 1 }, upIn10: 0.5, latencyMs: 0, late: true };
+    }
+
+    totals.gasUsd = totals.gasMon * mid;
+    const unrealized = sim.mon ? sim.mon * (mid - sim.cost / sim.mon) : 0;
+    totals.realizedUsd = sim.realized;
+    totals.pnlUsd = sim.realized + unrealized - totals.gasUsd;
+    totals.pnlMon = totals.pnlUsd / mid;
+    totals.pnlPct = (totals.pnlUsd / 100) * 100;
+
+    const ev = {
+      block: block, ts: Date.now(), mid: mid, bestBid: bid, bestAsk: ask, spreadBps: (spread / mid) * 10000,
+      decision: decision, quote: quote, fill: fill,
+      resting: { bidMon: sim.resting && sim.resting.side === "buy" ? 200 : 0, askMon: sim.resting && sim.resting.side === "sell" ? 200 : 0 },
+      position: {
+        side: sim.mon > 0 ? "long" : sim.mon < 0 ? "short" : "flat",
+        size: Math.abs(sim.mon), entryPrice: sim.mon ? sim.cost / sim.mon : null,
+        unrealizedUsd: unrealized, unrealizedMon: mid ? unrealized / mid : 0
+      },
+      totals: totals
+    };
+    pushBlock(ev);
+    if (fill) addTapeRow(ev, fill);
+  }, 300);
+}
+
+function stopDemo() {
+  if (st.demoRec) clearInterval(st.demoRec);
+  st.demoRec = null;
+  st.demo = false;
+  $("cDemo").style.display = "none";
+}
+
+/* -------------------------------------------------------------------- tape */
+const TAPE_HEAD = '<div class="trow head"><span>BLOCK</span><span>SIDE</span><span>SIZE MON</span><span class="hide-s">PRICE</span><span class="hide-s">LAT</span><span class="hide-s">TX</span></div>';
+
+/** Wipe every view that is derived from the event stream. Used on connect, on snapshot and on source switch. */
+function resetView() {
+  st.events = [];
+  st.latest = null;
+  originBlock = null;
+  shiftInit = false;
+  scale = null;
+  lastStripBlock = 0;
+  stripEl.innerHTML = "";
+  $("tape").innerHTML = TAPE_HEAD;
+  markDirty();
+}
+
+function addTapeRow(ev, fill) {
+  const tape = $("tape");
+  if (!tape) return;
+  const tr = document.createElement("div");
+  const kind = fill.side === "buy" ? "buy" : "sell";
+  tr.className = "trow " + kind;
+  const lat = ev.decision && !ev.decision.late ? ev.decision.latencyMs + "ms" : "late";
+  const tx = fill.txHash
+    ? '<a href="' + txUrl(fill.txHash) + '" target="_blank" rel="noreferrer">' + shortTx(fill.txHash) + "</a>"
+    : '<span class="mono-s">sim</span>';
+  tr.innerHTML =
+    "<span>" + fmtInt(fillBlock(ev)) + "</span>" +
+    '<span class="s">' + fill.side.toUpperCase() + "</span>" +
+    "<span>" + fmtMon(fill.size, 1) + "</span>" +
+    '<span class="hide-s">' + fmtPrice(fill.price) + "</span>" +
+    '<span class="hide-s">' + lat + "</span>" +
+    '<span class="hide-s">' + tx + "</span>";
+  const rows = tape.querySelectorAll(".trow");
+  if (rows.length > 1) tape.insertBefore(tr, rows[1]);
+  else tape.appendChild(tr);
+  while (tape.querySelectorAll(".trow").length > TAPE_MAX + 1) tape.removeChild(tape.lastChild);
+}
+function fillBlock(ev) { return ev.block; }
+
+/* ------------------------------------------------------------------- strip */
+let lastStripBlock = 0;
+const stripEl = $("strip");
+
+function cellFor(ev) {
+  const d = ev.decision;
+  const c = document.createElement("div");
+  c.className = "cell " + (!d ? "hold" : d.late ? "late" : d.action === "buy" ? "buy" : d.action === "sell" ? "sell" : "hold");
+  return c;
+}
+
+/** Newest sits at the right edge; the leftmost cells fall off past STRIP_MAX. */
+function renderStrip() {
+  const evs = st.events;
+  if (!evs.length) return;
+  const newest = evs[evs.length - 1].block;
+  if (newest === lastStripBlock) return;
+
+  if (lastStripBlock === 0 || newest < lastStripBlock) {
+    stripEl.innerHTML = "";
+    const from = Math.max(0, evs.length - STRIP_MAX);
+    for (let i = from; i < evs.length; i++) stripEl.appendChild(cellFor(evs[i]));
+    lastStripBlock = newest;
+    return;
+  }
+
+  const added = Math.min(newest - lastStripBlock, 60, evs.length);
+  for (let i = added; i >= 1; i--) {
+    const ev = evs[evs.length - i];
+    if (ev) stripEl.appendChild(cellFor(ev));
+  }
+  while (stripEl.childNodes.length > STRIP_MAX) stripEl.removeChild(stripEl.firstChild);
+  lastStripBlock = newest;
+}
+
+/* --------------------------------------------------------------------- DOM */
+let dirty = true;
+const markDirty = () => { dirty = true; };
+
+function renderDom() {
+  const ev = st.latest;
+  const meta = st.meta;
+
+  $("hBlock").textContent = ev ? fmtInt(ev.block) : "-";
+  $("hMid").textContent = ev ? fmtPrice(ev.mid) : "-";
+  $("hSpread").textContent = ev ? ev.spreadBps.toFixed(2) : "-";
+
+  const model = meta && meta.model ? meta.model : "-";
+  const cModel = $("cModel");
+  cModel.textContent = model.toUpperCase();
+  cModel.className = "chip " + (/^jev/i.test(model) ? "b-jev" : "b-mock");
+
+  const cw = $("cWallet");
+  cw.textContent = shortAddr(meta && meta.wallet);
+  cw.disabled = !(meta && meta.wallet);
+
+  if (meta && meta.startedAt) $("cUptime").textContent = hhmmss(Date.now() - meta.startedAt);
+
+  $("oMid").textContent = ev ? fmtPrice(ev.mid) : "-";
+  $("oBid").textContent = ev ? fmtPrice(ev.bestBid) : "-";
+  $("oAsk").textContent = ev ? fmtPrice(ev.bestAsk) : "-";
+
+  const pos = ev && ev.position ? ev.position : { side: "flat", size: 0, unrealizedUsd: 0, unrealizedMon: 0 };
+  $("oPos").textContent = pos.side === "flat" ? "flat" : pos.side + " " + fmtMon(pos.size, 1);
+  $("oUpl").textContent = fmtUsd(pos.unrealizedUsd);
+  $("oPnl").textContent = fmtSigned(ev && ev.totals ? ev.totals.pnlUsd : 0) + " USD";
+
+  const d = ev ? ev.decision : null;
+  const late = !d || d.late;
+  const word = $("dWord");
+  if (st.demo && !st.events.length) {
+    word.textContent = "-"; word.className = "word";
+  } else if (late) {
+    word.textContent = "LATE"; word.className = "word late";
+  } else {
+    word.textContent = d.action.toUpperCase();
+    word.className = "word " + d.action;
+  }
+  const probs = d ? d.probabilities : { buy: 0, sell: 0, hold: 0 };
+  const decided = !!d && !d.late;
+  $("dConf").textContent = decided ? Math.max(probs.buy, probs.sell, probs.hold).toFixed(2) : "-";
+  $("dLat").textContent = decided ? Math.round(d.latencyMs) + "MS" : "-";
+  const avg = avgLatency();
+  $("dAvg").textContent = avg ? avg + "MS" : "-";
+
+  const chosen = decided && d.action !== "hold" ? d.action : null;
+  $("pBuy").textContent = decided ? Math.round(probs.buy * 100) + "%" : "-";
+  $("pSell").textContent = decided ? Math.round(probs.sell * 100) + "%" : "-";
+  $("fBuy").style.width = (decided ? Math.max(0, Math.min(1, probs.buy)) * 100 : 0) + "%";
+  $("fSell").style.width = (decided ? Math.max(0, Math.min(1, probs.sell)) * 100 : 0) + "%";
+  $("barBuy").className = "bar buy" + (chosen === "buy" ? "" : " dim");
+  $("barSell").className = "bar sell" + (chosen === "sell" ? "" : " dim");
+
+  const q = ev ? ev.quote : null;
+  $("dQuote").textContent = !q
+    ? "no quote"
+    : (q.side === "buy" ? "bid " : "ask ") + fmtPrice(q.price) + " / " + fmtMon(q.size, 0) +
+      (q.capped ? " cap" : "") + " / " + q.status;
+  $("dRest").textContent = ev && ev.resting
+    ? "bid " + fmtMon(ev.resting.bidMon, 0) + " | ask " + fmtMon(ev.resting.askMon, 0)
+    : "-";
+
+  const side = $("pSide");
+  side.textContent = pos.side.toUpperCase();
+  side.className = "side-tag " + pos.side;
+  $("pSize").textContent = fmtMon(pos.size, 3);
+  $("pEntry").textContent = pos.entryPrice == null ? "-" : fmtPrice(pos.entryPrice);
+  $("pUpl").textContent = fmtSigned(pos.unrealizedMon, 4) + " MON";
+
+  const t = ev && ev.totals ? ev.totals : null;
+  $("kBlocks").textContent = t ? fmtInt(t.blocks) : "0";
+  $("kDecisions").textContent = t ? fmtInt(t.decisions) : "0";
+  $("kQuotes").textContent = t ? fmtInt(t.quotes) : "0";
+  $("kFills").textContent = t ? fmtInt(t.fills) : "0";
+  $("kReverted").textContent = t ? fmtInt(t.reverted) : "0";
+  $("kLate").textContent = t ? fmtInt(t.lateBlocks) : "0";
+  $("kGasMon").textContent = t ? t.gasMon.toFixed(4) : "0";
+  $("kJev").textContent = t ? t.jevUsd.toFixed(6) : "0";
+
+  const jv = t ? t.jevUsd : 0, gv = t ? t.gasUsd : 0;
+  const max = Math.max(jv, gv, 1e-9);
+  $("cJev").style.width = (jv / max) * 100 + "%";
+  $("cGas").style.width = (gv / max) * 100 + "%";
+  $("cJevV").textContent = fmtUsd(jv);
+  $("cGasV").textContent = fmtUsd(gv);
+
+  renderStrip();
+}
+
+/* ------------------------------------------------------------------- chart */
+const canvas = $("chart");
+const ctx = canvas.getContext("2d");
+const STEP = 9;
+const RIGHT_PAD = 78;
+const PAD_TOP = 26;
+const PAD_BOTTOM = 22;
+let cssW = 0, cssH = 0, dpr = 1;
+let originBlock = null;
+let shift = 0, shiftInit = false;
+let scale = null;
+let chartFont = "";
+/** Resolved once: getComputedStyle per frame would force a style recalc 60x a second. */
+function fontOf() {
+  if (!chartFont) {
+    try { chartFont = getComputedStyle(document.body).fontFamily || "monospace"; }
+    catch (e) { chartFont = "monospace"; }
+  }
+  return chartFont;
+}
+
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cssW = Math.max(1, Math.round(r.width));
+  cssH = Math.max(1, Math.round(r.height));
+  canvas.width = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  scale = null;
+  if (st.events.length) { shiftInit = false; }
+  drawChart();
+}
+if (typeof ResizeObserver !== "undefined") new ResizeObserver(resize).observe(canvas);
+window.addEventListener("resize", resize);
+
+function shiftTarget() {
+  const last = st.events.length ? st.events[st.events.length - 1] : null;
+  if (!last || originBlock === null) return null;
+  return cssW - RIGHT_PAD - (last.block - originBlock) * STEP;
+}
+
+function stepChart() {
+  const target = shiftTarget();
+  if (target === null) return;
+  if (!shiftInit) { shift = target; shiftInit = true; drawChart(); return; }
+  const diff = target - shift;
+  if (Math.abs(diff) < 0.4) {
+    if (shift !== target) { shift = target; drawChart(); }
+    return;
+  }
+  shift += diff * 0.18;
+  drawChart();
+}
+
+function drawChart() {
+  if (!cssW || !cssH) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const plotH = cssH - PAD_TOP - PAD_BOTTOM;
+  const evs = st.events;
+  if (plotH < 40 || cssW < 140 || !evs.length) return;
+
+  const n = Math.max(2, Math.ceil((cssW - RIGHT_PAD) / STEP) + 2);
+  const series = evs.slice(-n);
+  const last = series[series.length - 1];
+  if (originBlock === null) originBlock = series[0].block;
+
+  let lo = Infinity, hi = -Infinity, sum = 0;
+  for (const e of series) { if (e.mid < lo) lo = e.mid; if (e.mid > hi) hi = e.mid; sum += e.mid; }
+  const mean = sum / series.length;
+  const floor = Math.max(mean * 0.002, 1e-9);
+  if (hi - lo < floor) { lo = mean - floor / 2; hi = mean + floor / 2; }
+  if (scale) {
+    if (scale.block === last.block) { lo = scale.lo; hi = scale.hi; }
+    else { lo = scale.lo + (lo - scale.lo) * 0.12; hi = scale.hi + (hi - scale.hi) * 0.12; }
+    for (const e of series) { if (e.mid < lo) lo = e.mid; if (e.mid > hi) hi = e.mid; }
+    if (hi - lo < floor) { const c = (hi + lo) / 2; lo = c - floor / 2; hi = c + floor / 2; }
+  }
+  scale = { lo: lo, hi: hi, block: last.block };
+
+  const range = hi - lo || 1;
+  const fx = (b) => (b - originBlock) * STEP + shift;
+  const fy = (p) => PAD_TOP + (1 - (p - lo) / range) * plotH;
+  const base = PAD_TOP + plotH;
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(53,224,255,0.07)";
+  for (let i = 0; i <= 4; i++) {
+    const y = Math.round(PAD_TOP + (plotH * i) / 4) + 0.5;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cssW, y); ctx.stroke();
+  }
+
+  const first = fx(series[0].block);
+  const lastX = fx(last.block);
+  const clipL = Math.max(0, first - 4);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(clipL, 0, cssW - clipL, cssH); ctx.clip();
+
+  const pts = series.map((e) => [fx(e.block), fy(e.mid)]);
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], base);
+  for (const p of pts) ctx.lineTo(p[0], p[1]);
+  ctx.lineTo(pts[pts.length - 1][0], base);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(53,224,255,0.055)";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = "#7fe7ff";
+  ctx.stroke();
+
+  for (const e of series) {
+    if (!e.fill) continue;
+    ctx.beginPath();
+    ctx.arc(fx(e.block), fy(e.mid), 2.6, 0, Math.PI * 2);
+    ctx.fillStyle = e.fill.side === "buy" ? "#23e08b" : "#ff5f5f";
+    ctx.fill();
+  }
+  ctx.restore();
+
+  const yLine = fy(last.mid);
+  ctx.beginPath();
+  ctx.moveTo(lastX, yLine);
+  ctx.lineTo(cssW - 2, yLine);
+  ctx.setLineDash([2, 3]);
+  ctx.strokeStyle = "rgba(226,237,248,0.35)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.arc(lastX, yLine, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = "#e2edf8";
+  ctx.fill();
+
+  const label = last.mid.toFixed(6);
+  ctx.font = "11px " + fontOf();
+  const tw = ctx.measureText(label).width;
+  const bx = cssW - tw - 18;
+  ctx.fillStyle = "#0d1620";
+  ctx.fillRect(bx, yLine - 10, tw + 14, 20);
+  ctx.strokeStyle = "#23384d";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, yLine - 9.5, tw + 13, 19);
+  ctx.fillStyle = "#e2edf8";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, bx + 7, yLine);
+
+  for (let i = 1; i <= 3; i++) {
+    const f = i / 4;
+    const p = lo + (1 - f) * range;
+    ctx.fillStyle = "rgba(142,166,191,0.55)";
+    ctx.textAlign = "right";
+    ctx.fillText(p.toFixed(6), cssW - 6, PAD_TOP + plotH * f);
+  }
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+}
+
+/* -------------------------------------------------------------------- loop */
+function loop() {
+  if (dirty) { dirty = false; renderDom(); }
+  stepChart();
+  requestAnimationFrame(loop);
+}
+
+/* ---------------------------------------------------------------- controls */
+$("btnLive").addEventListener("click", () => {
+  const v = $("apiInput").value.trim().replace(/\/+$/, "") || DEFAULT_API;
+  apiBase = v;
+  $("apiInput").value = v;
+  try { localStorage.setItem("jev.api", v); } catch (e) {}
+  startLive();
+});
+
+$("cWallet").addEventListener("click", () => {
+  const w = st.meta && st.meta.wallet;
+  if (!w) return;
+  try { navigator.clipboard.writeText(w); } catch (e) {}
+  const el = $("cWallet");
+  el.textContent = "COPIED";
+  setTimeout(() => { el.textContent = shortAddr(w); }, 900);
+});
+
+setInterval(() => {
+  if (st.meta && st.meta.startedAt) $("cUptime").textContent = hhmmss(Date.now() - st.meta.startedAt);
+}, 1000);
+
+function startLive() {
+  stopDemo();
+  resetView();
+  connectLive();
+}
+
+resize();
+startLive();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
