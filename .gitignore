@@ -1,3 +1,6 @@
 node_modules
 .env
 data/
+
+# Local agent scratch state (memory notes, session data)
+.workbuddy/
