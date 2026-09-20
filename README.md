@@ -2,6 +2,28 @@
 
 One decision every Monad block. A TypeSafe Jev model watches the Kuru MON-USDC order book and answers buy or sell every ~300 ms. Every block posts a real post-only limit order on that side, one tick inside the touch, replacing the last one. Fills happen when a taker hits it, so the bot earns the spread instead of paying it. A small server streams every block to the dashboard.
 
+## Dashboard
+
+`dashboard/index.html` is the whole frontend: one file, no build step, no dependencies. It opens the
+server's SSE stream and renders a block at a time.
+
+![The dashboard streaming a live dry run](docs/dashboard.gif)
+
+The capture above is a live dry run on the Jev model, streamed from the deployed instance. The header
+carries the block, the mid and the spread. Under it the price line marks every fill, and the strip is
+the last 160 blocks (green buy, red sell, amber a block the model missed). On the right: the call for
+this block with its confidence, the position, the running totals, AI cost against on-chain gas, and the
+fill tape.
+
+    dashboard/index.html                          # same origin, else localhost:3000
+    dashboard/index.html?api=https://example.com  # any host serving /events
+
+Open it from disk or serve it next to the server. The address is remembered in `localStorage`. With
+nothing reachable it falls back to a DEMO source after 3.5 s and says so in the header, so the page is
+never blank.
+
+[1600x900 MP4, 2.4 MB](docs/dashboard.mp4)
+
 ## Run
 
     cp .env.example .env
@@ -12,7 +34,7 @@ With no `PRIVATE_KEY` it dry-runs: real book, real decisions, simulated fills. S
 
 ## Endpoints
 
-Deployed (dry run, mock model): https://jev-trader-production.up.railway.app
+Deployed (dry run, Jev model): https://jev-trader-production.up.railway.app
 
 - `GET /` snapshot: model, wallet, dryRun, latest block event
 - `GET /history` last 1000 block events
@@ -54,6 +76,7 @@ Live sends are fired and forgotten, so the `block` event carries the **intent**:
     src/model.ts    Model interface, JevModel (AI SDK experimental_evaluate), MockModel
     src/trader.ts   the loop: one in flight, hold when late, position and P&L accounting
     src/server.ts   Bun.serve: snapshot, history, SSE
+    dashboard/      the whole frontend: one HTML file, an SSE client, no build step
 
 ## The 300 ms budget
 
